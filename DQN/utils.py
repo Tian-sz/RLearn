@@ -50,5 +50,17 @@ def get_action_dim(env):
         raise NotImplementedError(f"不支持的空间类型: {type(env.action_space)}")
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
-    slope = (end_e - start_e) / duration
-    return max(slope * t + start_e, end_e)
+    slope = (end_e - start_e) / duration  # 斜率
+    epsilon = max(slope * t + start_e, end_e)
+    return epsilon
+
+def dict_to_namespace(data):
+    """递归将嵌套字典转换为嵌套SimpleNamespace"""
+    if isinstance(data, dict):
+        for key, value in data.items():
+            data[key] = dict_to_namespace(value)
+        return types.SimpleNamespace(**data)
+    elif isinstance(data, list):
+        return [dict_to_namespace(item) for item in data]
+    else:
+        return data

@@ -42,17 +42,20 @@ class DQN(Algorithm):
             epsilon = self.config.epsilon
         if eval_mode or np.random.rand() > epsilon:
             state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-            return self.q_net(state_tensor).argmax().item()
+            return self.q_net(state_tensor).argmax().numpy()
         else:
-            return np.random.randint(self.action_dim)
+            return np.array(np.random.randint(self.action_dim))
 
     def update(self, batch):
-        states, actions, rewards, next_states, dones = batch
+        state, action, next_state, done, reward = batch.observations, batch.actions, batch.next_observations, batch.dones, batch.rewards
+        # truncated = info.get("truncated", torch.zeros_like(done))
         # DQN特有的更新逻辑
-        current_q = self.q_net(states).gather(1, actions)
+        current_q = self.q_net(state).gather(1, action)
         with torch.no_grad():
-            next_q = self.target_net(next_states).max(1)[0]
-            target_q = rewards + (1 - dones) * self.config.gamma * next_q
+            next_q = self.target_net(next_state).max(1)[0].unsqueeze(1)
+            # mask = 1 - (done and not truncated)  # 当且仅当结束且非截断时为0s
+            mask = 1 - done
+            target_q = reward + mask * self.config.gamma * next_q
 
         loss = F.mse_loss(current_q, target_q)
         self.optimizer.zero_grad()
